@@ -1,6 +1,6 @@
 #define LINUX
 #define PROCFS_MAX_SIZE 1024
-#define PROCFS_NAME "procbuf"
+#define PROCFS_NAME "kmlab"
 #include <linux/module.h>
 #include <linux/kernel.h>
 #include <linux/proc_fs.h>
@@ -24,17 +24,56 @@ static struct proc_dir_entry *proc_kmlab_status;
 static char proc_buffer[PROCFS_MAX_SIZE];
 static unsigned long proc_buffer_size = 0;
 
+struct processes {
+   struct list_head list;
+   int pid;
+   int CPUTime;
+};
+
+LIST_HEAD(head);
 
 
 static ssize_t procfile_write(struct file *file, const char __user *buff, size_t len, loff_t *off)
 {
-   return 0;
+   memset(&proc_buffer[0], 0, sizeof(proc_buffer));
+
+   proc_buffer_size = len;
+   if(proc_buffer_size > PROCFS_MAX_SIZE)
+   {
+      proc_buffer_size = PROCFS_MAX_SIZE;
+   }
+
+   if(copy_from_user(proc_buffer, buff, proc_buffer_size))
+      return -EFAULT;
+   
+   proc_buffer[proc_buffer_size & (PROCFS_MAX_SIZE - 1)] = '\0';
+   *off += proc_buffer_size;
+   pr_info("Wrote %s to proc.\n", proc_buffer);
+
+   return proc_buffer_size;
 }
 
 static ssize_t procfile_read(struct file *file_pointer, char __user *buffer, size_t buffer_length, loff_t *offset)
 {
+   int len = sizeof(proc_buffer);
+   ssize_t ret = len;
 
-   return 0;
+   if(*offset >= len)
+   {
+      return 0;
+   }
+   if(copy_to_user(buffer, proc_buffer, len))
+   {
+      pr_info("Failed to copy to user.\n");
+      ret = 0;
+   }
+   else
+   {
+      pr_info("procfile read /proc/%s\n", PROCFS_NAME);
+      *offset = len;
+   }
+
+   return ret;
 }
 
 static const struct proc_ops proc_file_fops = {
@@ -52,16 +91,16 @@ int __init kmlab_init(void)
    pr_info("KMLAB MODULE LOADING\n");
    #endif
    // Insert your code here ...
-   proc_kmlab_dir = proc_mkdir("kmlab", NULL);
+   proc_kmlab_dir = proc_mkdir(PROCFS_NAME, NULL);
    proc_kmlab_status = proc_create("status", 0666, proc_kmlab_dir, &proc_file_fops);
 
    if(NULL == proc_kmlab_dir || NULL == proc_kmlab_status)
    {
-      pr_alert("Initialization Error: %s Generation Failed.", (NULL == proc_kmlab_dir) ? "proc/kmlab" : "proc/kmlab/status");
+      pr_alert("Initialization Error: %s Generation Failed.", (NULL == proc_kmlab_dir) ? PROCFS_NAME : "proc/kmlab/status");
       return -ENOMEM;
    }
-   pr_info("/proc/%s created\n", "kmlab");
-   pr_info("/proc/%s created\n", "kmlab/status");
+   pr_info("/proc/%s created\n", PROCFS_NAME);
+   pr_info("/proc/%s/%s created\n", PROCFS_NAME, "status");
    pr_info("KMLAB MODULE LOADED\n");
 
    return 0;   
