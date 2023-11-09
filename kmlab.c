@@ -27,7 +27,7 @@ static unsigned long proc_buffer_size = 0;
 struct processes {
    struct list_head list;
    int pid;
-   int CPUTime;
+   unsigned long CPUTime;
 };
 
 LIST_HEAD(head);
@@ -35,6 +35,7 @@ LIST_HEAD(head);
 
 static ssize_t procfile_write(struct file *file, const char __user *buff, size_t len, loff_t *off)
 {
+   pr_info("proc write\n");
    memset(&proc_buffer[0], 0, sizeof(proc_buffer));
 
    proc_buffer_size = len;
@@ -44,11 +45,33 @@ static ssize_t procfile_write(struct file *file, const char __user *buff, size_t
    }
 
    if(copy_from_user(proc_buffer, buff, proc_buffer_size))
+      pr_info("Copy from user failed.\n");
       return -EFAULT;
    
    proc_buffer[proc_buffer_size & (PROCFS_MAX_SIZE - 1)] = '\0';
    *off += proc_buffer_size;
    pr_info("Wrote %s to proc.\n", proc_buffer);
+
+   pid_t pid;
+   unsigned long cputime;
+   if(kstrtoint(proc_buffer, 10, &pid) != 0)
+   {
+      pr_info("kstrtoint failed.\n");
+      return -EINVAL;
+   }
+   else
+   {
+      get_cpu_use(pid, &cputime);
+      struct processes *new_entry = kmalloc(sizeof(struct processes), GFP_KERNEL);
+      pr_info("PID: %d, CPU Time: %d", pid, cputime);
+      if(new_entry)
+      {
+         new_entry->pid = pid;
+         new_entry->CPUTime = cputime;
+         list_add_tail(&new_entry->list, &head);
+         pr_info("Added Process With PID %s to List.\n", proc_buffer);
+      }
+   }
 
    return proc_buffer_size;
 }
@@ -69,6 +92,10 @@ static ssize_t procfile_read(struct file *file_pointer, char __user *buffer, siz
    }
    else
    {
+
+
+
+
       pr_info("procfile read /proc/%s\n", PROCFS_NAME);
       *offset = len;
    }
