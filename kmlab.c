@@ -40,13 +40,13 @@ LIST_HEAD(head);
 static void update_list(struct timer_list *t)
 {
    pr_info("Timer Woke Up. Updating List...");
-
+   schedule_work(&kmlab_work);
    mod_timer(&timer, jiffies + msecs_to_jiffies(5000));
 }
 
 static void work_function(struct work_struct *work)
 {
-
+   
 }
 
 static ssize_t procfile_write(struct file *file, const char __user *buff, size_t len, loff_t *off)
@@ -185,24 +185,19 @@ int __init kmlab_init(void)
    mod_timer(&timer, jiffies + msecs_to_jiffies(5000));
 
 
-      kmlab_workqueue = create_workqueue("kmlab_workqueue");
-      if(!kmlab_workqueue)
-      {
-         pr_err("Failed to create workqueue.\n");
-      }
+   kmlab_workqueue = create_workqueue("kmlab_workqueue");
+   if(!kmlab_workqueue)
+   {
+      pr_err("Failed to create workqueue.\n");
+   }
 
-      kmlab_work = kmalloc(sizeof(*kmlab_work), GFP_KERNEL);
-      if(!kmlab_work)
-      {
-         destroy_workqueue(kmlab_workqueue);
-      }
-      INIT_WORK(kmlab_work, work_function);
+   kmlab_work = kmalloc(sizeof(*kmlab_work), GFP_KERNEL);
+   if(!kmlab_work)
+   {
+      destroy_workqueue(kmlab_workqueue);
+   }
+   INIT_WORK(kmlab_work, work_function);
 
-      
-   
-   
-
-   // Insert your code here ...
   
    pr_info("KMLAB MODULE LOADED\n");
 
@@ -221,6 +216,8 @@ void __exit kmlab_exit(void)
    remove_proc_entry("status", proc_kmlab_dir);
    remove_proc_entry("kmlab", NULL);
    del_timer(&timer);
+   flush_workqueue(kmlab_workqueue);
+   destroy_workqueue(kmlab_workqueue);
 
    pr_info("KMLAB MODULE UNLOADED\n");
 }
