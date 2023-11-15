@@ -22,8 +22,6 @@ MODULE_DESCRIPTION("CPTS360 Lab 4");
 // Global variables as needed ...
 static struct proc_dir_entry *proc_kmlab_dir;
 static struct proc_dir_entry *proc_kmlab_status;
-static char proc_buffer[PROCFS_MAX_SIZE];
-static unsigned long proc_buffer_size = 0;
 static spinlock_t lock;
 static struct timer_list timer;
 static struct workqueue_struct *kmlab_workqueue;
@@ -39,14 +37,35 @@ LIST_HEAD(head);
 
 static void update_list(struct timer_list *t)
 {
-   pr_info("Timer Woke Up. Updating List...");
-   schedule_work(&kmlab_work);
+   pr_info("Timer Woke Up. Scheduling List Update...");
+   schedule_work(kmlab_work);
    mod_timer(&timer, jiffies + msecs_to_jiffies(5000));
 }
 
 static void work_function(struct work_struct *work)
 {
-   
+   struct processes *entry, *temp;
+    unsigned long cpu_use;
+    int status;
+
+    list_for_each_entry_safe(entry, temp, &head, list)
+    {
+        status = get_cpu_use(entry->pid, &cpu_use);
+
+        if (status == 0)
+        {
+            // Process is running, update CPU time
+            entry->CPUTime = cpu_use;
+        }
+        else if (status == -1)
+        {
+            // Process is not running, delete from the list
+            pr_info("Deleted Process w/PID %ul", entry->CPUTime);
+            list_del(&entry->list);
+            kfree(entry);
+        }
+    }
+    pr_info("Updated List");
 }
 
 static ssize_t procfile_write(struct file *file, const char __user *buff, size_t len, loff_t *off)
@@ -100,7 +119,6 @@ static ssize_t procfile_write(struct file *file, const char __user *buff, size_t
 
 static ssize_t print_process_data(struct file *file_pointer, char __user *buffer, size_t buffer_length, loff_t *offset)
 {
-   pr_info("Inside read");
    char *buf;
    unsigned long flags;
    size_t buf_size = 0;
@@ -110,12 +128,10 @@ static ssize_t print_process_data(struct file *file_pointer, char __user *buffer
    buf = kmalloc(buffer_length, GFP_KERNEL);
    if(buf == NULL)
    {
-      pr_info("Line 113 Error");
       return -ENOMEM;
    }
    if(*offset > 0)
    {
-      pr_info("Line 118 Error");
       return 0;
    }
 
@@ -134,16 +150,13 @@ static ssize_t print_process_data(struct file *file_pointer, char __user *buffer
 
    if(!error)
    {
-      pr_info("Buffer: %s", buf);
       
       if(copy_to_user(buffer, buf, buf_size))
       {
-         pr_info("Line 142");
          error = -EFAULT;
       }
       else
       {
-         pr_info("Success: copied %d bytes.", buf_size);
          *offset += buf_size;
       }
    }
