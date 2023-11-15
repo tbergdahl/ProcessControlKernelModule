@@ -4,6 +4,7 @@
 #include <sys/types.h>
 #include <time.h>
 #include <unistd.h>
+#include <string.h>
 
 // Additional headers as needed
 
@@ -11,9 +12,10 @@
 // Register process with kernel module
 void register_process(unsigned int pid)
 {
-    
-     // Insert your code here ...
-   
+    char command [200];
+    memset(command, '\0', 200);
+    sprintf(command, "echo %u > /proc/kmlab/status", pid);
+    system(command);
 }
 
 int main(int argc, char* argv[])
