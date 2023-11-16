@@ -1,0 +1,1 @@
+cmd_/home/trenton/CPTS360/Lab4/kmlab.ko := ld -r -m elf_x86_64 -z noexecstack --build-id=sha1  -T scripts/module.lds -o /home/trenton/CPTS360/Lab4/kmlab.ko /home/trenton/CPTS360/Lab4/kmlab.o /home/trenton/CPTS360/Lab4/kmlab.mod.o;  true

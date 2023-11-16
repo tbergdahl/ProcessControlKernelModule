@@ -60,7 +60,7 @@ static void work_function(struct work_struct *work)
         else if (status == -1)
         {
             // Process is not running, delete from the list
-            pr_info("Deleted Process w/PID %ul", entry->CPUTime);
+            pr_info("Deleted Process w/PID %lu", entry->CPUTime);
             list_del(&entry->list);
             kfree(entry);
         }

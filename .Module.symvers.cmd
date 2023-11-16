@@ -1,0 +1,1 @@
+cmd_/home/trenton/CPTS360/Lab4/Module.symvers := sed 's/\.ko$$/\.o/' /home/trenton/CPTS360/Lab4/modules.order | scripts/mod/modpost -m -a  -o /home/trenton/CPTS360/Lab4/Module.symvers -e -i Module.symvers   -T -
